@@ -22,8 +22,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <CoreClrPkgs>$(CoreClrRepo)bin\Product\Windows_NT.x64.Release\.nuget\pkg</CoreClrPkgs>
-    <CoreSetupPkgs>$(CoreSetupRepo)artifacts\win10-x64\corehost</CoreSetupPkgs>
+    <CoreClrPkgs>$(CoreClrRepo)bin\Product\Windows_NT.x64.Release\.nuget\pkg\</CoreClrPkgs>
+    <CoreSetupPkgs>$(CoreSetupRepo)artifacts\win10-x64\corehost\</CoreSetupPkgs>
+    <CliSignalFilesRootPath>$(CliRepo)artifacts\win10-x64\coreSetupDownload\</CliSignalFilesRootPath>
+    <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts\win10-x64\packages\</CoreSetupInstallersSourcePath>
+    <CliInstallersDestinationPath>$(CliRepo)artifacts\win10-x64\packages\</CliInstallersDestinationPath>
   </PropertyGroup>
 
   <Target Name="Build" 
@@ -33,7 +36,8 @@
           DependsOnTargets="BuildRepoTools;
                             UpdateCliProjectJsons;
                             UpdateCliDependencyVersions;
-                            UpdateNuGetConfig" />
+                            UpdateNuGetConfig;
+                            LayoutCoreSetupInstallers" />
   <Target Name="BuildCoreSetup"
           DependsOnTargets="BuildRepoTools;
                             UpdateCoreSetupProjectJsons;
@@ -43,6 +47,47 @@
 <!--    <Exec Command="$(CoreSetupRepo)build.cmd" 
           WorkingDirectory="$(CoreSetupRepo)" />
 -->          
+  </Target>
+
+  <Target Name="LayoutCoreSetupInstallers"
+          DependsOnTargets="WriteInstallerSignalFiles">
+    <ItemGroup>
+      <InstallerFiles Include="$(CoreSetupInstallersSourcePath)\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(InstallerFiles)"
+          DestinationFolder="$(CliInstallersDestinationPath)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="GetSharedFrameworkVersion">
+    <ItemGroup>
+      <SharedFrameworkFiles Include="$(CoreSetupInstallersSourcePath)dotnet-sharedframework-*.msi" />
+    </ItemGroup>
+    <PropertyGroup>
+      <SharedFrameworkFile Condition="'$(SharedFrameworkFile)' == ''">%(SharedFrameworkFiles.Identity)</SharedFrameworkFile>
+      <SharedFrameworkVersion>$([System.Text.RegularExpressions.Regex]::Match($(SharedFrameworkFile), (\d+\.\d+\.\d+-[^\.]+)))</SharedFrameworkVersion>     
+    </PropertyGroup>
+    <Message Text="Shared Framework Version: $(SharedFrameworkVersion)" Importance="High" />
+  </Target>
+
+  <Target Name="GatherInstallerSignalFiles"
+          DependsOnTargets="GetSharedFrameworkVersion">
+    <ItemGroup>
+      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\combinedSharedHostAndFrameworkArchive" />
+      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\sharedFrameworkInstaller" />
+      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\sharedHostInstaller" />
+      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\hostFxrInstaller" />
+    </ItemGroup>
+  </Target>
+  <Target Name="WriteInstallerSignalFiles"
+          DependsOnTargets="GatherInstallerSignalFiles"
+          Inputs="%(InstallerSignalFile.Identity)"
+          Outputs="fake">
+    <MakeDir Directories="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\" />
+    <Message Text="Writing signal file: %(InstallerSignalFile.Identity)" />
+    <WriteLinesToFile File="%(InstallerSignalFile.Identity)"
+                      Lines="Empty signal file"
+                      Overwrite="true" />
   </Target>
 
   <Target Name="BuildRepoTools"
