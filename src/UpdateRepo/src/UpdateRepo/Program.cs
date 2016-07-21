@@ -33,10 +33,16 @@ namespace UpdateRepo
 
             u.Execute(versions);
 
-            IEnumerable<string> projectJsonFiles = Enumerable.Union(Enumerable.Union(
-                Directory.GetFiles(@"D:\git\core-setup\TestAssets", "project.json", SearchOption.AllDirectories),
-                Directory.GetFiles(@"D:\git\core-setup\build_projects", "project.json", SearchOption.AllDirectories)),
-                Directory.GetFiles(@"D:\git\core-setup\pkg", "project.json", SearchOption.AllDirectories))
+            // NOTE: assumes running on Windows 10
+            UpdateProjectJson.Execute(Directory.GetFiles(@"D:\git\core-setup\TestAssets",
+                "project.json", SearchOption.AllDirectories), null, new List<string> { "win10-x64" });
+
+            // project.json under here doesn't have a Windows 10 RID
+            UpdateProjectJson.Execute(Directory.GetFiles(@"D:\git\core-setup\build_projects",
+                "project.json", SearchOption.AllDirectories), null, new List<string> { "win7-x64" });
+
+            IEnumerable<string> projectJsonFiles = 
+                Directory.GetFiles(@"D:\git\core-setup\pkg", "project.json", SearchOption.AllDirectories)
                 .Where(p => !File.Exists(Path.Combine(Path.GetDirectoryName(p), ".noautoupdate")) &&
                     !Path.GetDirectoryName(p).EndsWith("CSharp_Web", StringComparison.Ordinal));
 
@@ -45,8 +51,7 @@ namespace UpdateRepo
                 new PackageInfo { Id = "Microsoft.NETCore.Runtime.CoreCLR", Version = new NuGetVersion("1.0.4-beta-24318-0") }
             };
 
-            var rids = new List<string> { "win7-x64" };
-            UpdateProjectJson.Execute(projectJsonFiles, packages, rids);
+            UpdateProjectJson.Execute(projectJsonFiles, packages, new List<string> { "win7-x64" });
         }
 
         static void UpdateCli()

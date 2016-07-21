@@ -21,10 +21,14 @@ namespace UpdateRepo
                 if (projectRoot == null)
                     throw new Exception($"A non valid JSON file was encountered '{projectJsonFile}'. Skipping file.");
 
-                bool isDirty = FindAllDependencyProperties(projectRoot)
-                    .Select(dependencyProperty => ReplaceDependencyVersion(dependencyProperty, packageInfos))
-                    .ToArray()
-                    .Any(shouldWrite => shouldWrite);
+                bool isDirty = false;
+                if (packageInfos != null)
+                {
+                    isDirty = FindAllDependencyProperties(projectRoot)
+                        .Select(dependencyProperty => ReplaceDependencyVersion(dependencyProperty, packageInfos))
+                        .ToArray()
+                        .Any(shouldWrite => shouldWrite);
+                }
 
                 if (rids != null)
                     isDirty |= FilterRIDs(projectRoot, rids);
@@ -83,11 +87,11 @@ namespace UpdateRepo
                     {
                         if (dependencyProperty.Value is JObject)
                         {
-                            dependencyProperty.Value["version"] = $"[{newVersion}]";
+                            dependencyProperty.Value["version"] = newVersion;
                         }
                         else
                         {
-                            dependencyProperty.Value = $"[{newVersion}]";
+                            dependencyProperty.Value = newVersion;
                         }
 
                         return true;
