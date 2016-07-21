@@ -3,7 +3,6 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,16 +12,8 @@ namespace UpdateRepo
 {
     public static class UpdateProjectJson
     {
-        public static void Execute(string repoRoot, List<PackageInfo> packageInfos)
+        public static void Execute(IEnumerable<string> projectJsonFiles, List<PackageInfo> packageInfos, List<string> rids)
         {
-            const string noUpdateFileName = ".noautoupdate";
-
-            IEnumerable<string> projectJsonFiles = Enumerable.Union(
-                Directory.GetFiles(repoRoot, "project.json", SearchOption.AllDirectories),
-                Directory.GetFiles(Path.Combine(repoRoot, @"src\dotnet\commands\dotnet-new"), "project.json.template", SearchOption.AllDirectories))
-                .Where(p => !File.Exists(Path.Combine(Path.GetDirectoryName(p), noUpdateFileName)) &&
-                    !Path.GetDirectoryName(p).EndsWith("CSharp_Web", StringComparison.Ordinal));
-
             foreach (string projectJsonFile in projectJsonFiles)
             {
                 var projectRoot = ReadProject(projectJsonFile);
@@ -30,17 +21,34 @@ namespace UpdateRepo
                 if (projectRoot == null)
                     throw new Exception($"A non valid JSON file was encountered '{projectJsonFile}'. Skipping file.");
 
-                bool changedAnyPackage = FindAllDependencyProperties(projectRoot)
+                bool isDirty = FindAllDependencyProperties(projectRoot)
                     .Select(dependencyProperty => ReplaceDependencyVersion(dependencyProperty, packageInfos))
                     .ToArray()
                     .Any(shouldWrite => shouldWrite);
 
-                if (changedAnyPackage)
+                if (rids != null)
+                    isDirty |= FilterRIDs(projectRoot, rids);
+
+                if (isDirty)
                 {
                     Console.WriteLine($"Writing changes to {projectJsonFile}");
                     WriteProject(projectRoot, projectJsonFile);
                 }
             }
+        }
+
+        static bool FilterRIDs(JObject projectJsonRoot, List<string> rids)
+        {
+            if (projectJsonRoot["runtimes"] == null)
+                return false;
+
+            // replace the existing set of RIDs with the contents of rids
+            var runtimes = new JObject();
+            foreach (var rid in rids)
+                runtimes.Add(rid, new JObject());
+
+            projectJsonRoot["runtimes"] = runtimes;
+            return true;
         }
 
         static IEnumerable<JProperty> FindAllDependencyProperties(JObject projectJsonRoot)

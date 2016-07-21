@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,26 +14,19 @@ namespace UpdateRepo
     {
         private string m_repoRoot;
         private string m_depsCsFile;
-        private IReadOnlyList<string> m_versions;
 
-        public UpdateDependencyVersions(string repoRoot, string depsCsFile, IReadOnlyList<string> versions)
+        public UpdateDependencyVersions(string repoRoot, string depsCsFile)
         {
             m_repoRoot = repoRoot;
             m_depsCsFile = depsCsFile;
-            m_versions = versions;
         }
 
-        public void Execute(string coreClrAndJitVer)
-        {
-            Execute(coreClrAndJitVer, coreClrAndJitVer);
-        }
-
-        public void Execute(string coreClrVer, string jitVer)
+        public void Execute(IReadOnlyList<Tuple<string, NuGetVersion>> versions)
         {
             ReplaceFileContents(Path.Combine(m_repoRoot, m_depsCsFile), fileContents =>
             {
-                foreach (var version in m_versions)
-                    fileContents = ReplaceDependencyVersion(fileContents, version, coreClrVer);
+                foreach (var version in versions)
+                    fileContents = ReplaceDependencyVersion(fileContents, version.Item1, version.Item2.ToNormalizedString());
 
                 return fileContents;
             });
@@ -42,6 +36,7 @@ namespace UpdateRepo
         {
             string contents = File.ReadAllText(depsVersCsFile);
             contents = replacement(contents);
+            Console.WriteLine($"Writing changes to {depsVersCsFile}");
             File.WriteAllText(depsVersCsFile, contents, Encoding.UTF8);
         }
 
