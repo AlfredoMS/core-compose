@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <UsingTask TaskName="AddDependenciesToProjectJson" AssemblyFile="$(BuildToolsTaskDir)Microsoft.DotNet.Build.Tasks.dll"/>
+  <UsingTask TaskName="ZipFileExtractToDirectory" AssemblyFile="$(BuildToolsTaskDir)Microsoft.DotNet.Build.Tasks.dll" />
 
   <Import Project="dir.props" />
   <Import Project="config.props" />
@@ -24,9 +25,12 @@
   <PropertyGroup>
     <CoreClrPkgs>$(CoreClrRepo)bin\Product\Windows_NT.x64.Release\.nuget\pkg\</CoreClrPkgs>
     <CoreSetupPkgs>$(CoreSetupRepo)artifacts\win10-x64\corehost\</CoreSetupPkgs>
-    <CliSignalFilesRootPath>$(CliRepo)artifacts\win10-x64\coreSetupDownload\</CliSignalFilesRootPath>
+    <CliIntermediatePath>$(CliRepo)artifacts\win10-x64\intermediate\</CliIntermediatePath>
+    <CliSignalFilesRootPath>$(CliIntermediatePath)coreSetupDownload\</CliSignalFilesRootPath>
+    <CliSharedFrameworkRootPath>$(CliIntermediatePath)sharedFrameworkPublish</CliSharedFrameworkRootPath>
     <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts\win10-x64\packages\</CoreSetupInstallersSourcePath>
     <CliInstallersDestinationPath>$(CliRepo)artifacts\win10-x64\packages\</CliInstallersDestinationPath>
+    <CoreSetupDotNetWinZip>$(CoreSetupInstallersSourcePath)</CoreSetupDotNetWinZip>
   </PropertyGroup>
 
   <Target Name="Build" 
@@ -50,13 +54,23 @@
   </Target>
 
   <Target Name="LayoutCoreSetupInstallers"
-          DependsOnTargets="WriteInstallerSignalFiles">
+          DependsOnTargets="WriteInstallerSignalFiles;
+                            UnzipDotnetWinInstaller;
+                            CopyCoreSetupInstallers" />
+  <Target Name="CopyCoreSetupInstallers">
     <ItemGroup>
       <InstallerFiles Include="$(CoreSetupInstallersSourcePath)\*" />
     </ItemGroup>
     <Copy SourceFiles="@(InstallerFiles)"
           DestinationFolder="$(CliInstallersDestinationPath)"
           SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="UnzipDotnetWinInstaller">
+    <MakeDir Directories="$(CliSharedFrameworkRootPath)" />
+    <ZipFileExtractToDirectory SourceArchive="$(CoreSetupInstallersSourcePath)dotnet-win-x64.$(SharedFrameworkVersion).zip" 
+                               DestinationDirectory="$(CliSharedFrameworkRootPath)"
+                               OverwriteDestination="true" />
   </Target>
 
   <Target Name="GetSharedFrameworkVersion">
@@ -73,18 +87,18 @@
   <Target Name="GatherInstallerSignalFiles"
           DependsOnTargets="GetSharedFrameworkVersion">
     <ItemGroup>
-      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\combinedSharedHostAndFrameworkArchive" />
-      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\sharedFrameworkInstaller" />
-      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\sharedHostInstaller" />
-      <InstallerSignalFile Include="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\hostFxrInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\combinedSharedHostAndFrameworkArchive" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\sharedFrameworkInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\sharedHostInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\hostFxrInstaller" />
     </ItemGroup>
   </Target>
   <Target Name="WriteInstallerSignalFiles"
           DependsOnTargets="GatherInstallerSignalFiles"
           Inputs="%(InstallerSignalFile.Identity)"
           Outputs="fake">
-    <MakeDir Directories="$(CoreSetupInstallersSourcePath)$(SharedFrameworkVersion)\" />
-    <Message Text="Writing signal file: %(InstallerSignalFile.Identity)" />
+    <MakeDir Directories="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\" />
+    <Message Text="Writing signal file: %(InstallerSignalFile.Identity)" Importance="High" />
     <WriteLinesToFile File="%(InstallerSignalFile.Identity)"
                       Lines="Empty signal file"
                       Overwrite="true" />
