@@ -38,13 +38,11 @@
 
   <Target Name="BuildCli"
           DependsOnTargets="BuildRepoTools;
-                            UpdateCliProjectJsons;
                             UpdateCliDependencyVersions;
                             UpdateNuGetConfig;
                             LayoutCoreSetupInstallers" />
   <Target Name="BuildCoreSetup"
           DependsOnTargets="BuildRepoTools;
-                            UpdateCoreSetupProjectJsons;
                             UpdateCoreSetupDependencyVersions;
                             UpdateNuGetConfig">
     <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
@@ -105,103 +103,24 @@
   </Target>
 
   <Target Name="BuildRepoTools"
-          DependsOnTargets="BuildUpdateDependencyVersionsProject;BuildUpdateNuGetConfigProject" />
+          DependsOnTargets="BuildUpdateNuGetConfigProject" />
 
   <Target Name="UpdateCoreSetupDependencyVersions">
-    <Exec Command="$(UpdateDependencyVersionsFilename) $(CoreSetupRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" />
+    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe restore $(MSBuildThisFileDirectory)packages" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
+    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CoreSetupRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
   </Target>
   <Target Name="UpdateCliDependencyVersions">
-    <Exec Command="$(UpdateDependencyVersionsFilename) $(CliRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" />
+    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe restore $(MSBuildThisFileDirectory)packages" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
+    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CliRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
   </Target>
 
   <Target Name="UpdateNuGetConfig">
-    <Exec Command="$(UpdateNuGetConfigFilename) $(CoreSetupRepo)NuGet.config $(CoreClrPkgs) $(CoreSetupPkgs)" />
+    <Exec Command="$(UpdateNuGetConfigFilename) $(CoreSetupRepo)NuGet.config $(CoreClrPkgs)" />
     <Exec Command="$(UpdateNuGetConfigFilename) $(CliRepo)NuGet.config $(CoreClrPkgs) $(CoreSetupPkgs)" />
-  </Target>
-
-  <Target Name="GatherCliProjectJsons">
-    <ItemGroup>
-      <CliProjectJson Include="$(CliRepo)build_projects\dotnet-cli-build\project.json" >
-        <RuntimeIds>win7-x64</RuntimeIds>
-      </CliProjectJson>
-      <CliProjectJson Include="$(CliRepo)build_projects\update-dependencies\project.json">
-        <RuntimeIds>win7-x64</RuntimeIds>
-      </CliProjectJson>
-      <CliProjectJson Include="$(CliRepo)tools\Archiver\project.json">
-        <RuntimeIds>win7-x64</RuntimeIds>
-      </CliProjectJson>
-      <CliProjectJson Include="$(CliRepo)tools\MultiProjectValidator\project.json">
-        <RuntimeIds>win7-x64</RuntimeIds>
-      </CliProjectJson>
-<!-->      <CliProjectJson Include="$(CliRepo)test\**\project.json" /> -->
-      <CliProjectJson Include="$(CliRepo)TestAssets\**\project.json" Exclude="$(CliRepo)TestAssets\ProjectModelServer\IncorrectProjectJson\project.json" />
-    </ItemGroup>
-  </Target>
-
-  <Target Name="UpdateCliProjectJsons"
-          DependsOnTargets="GatherCliProjectJsons"
-          Inputs="%(CliProjectJson.Identity)"
-          Outputs="fake">
-    <PropertyGroup>
-      <AppendRuntimesSection>false</AppendRuntimesSection>
-      <AppendRuntimesSection Condition="'%(CliProjectJson.RuntimeIds)' != ''">true</AppendRuntimesSection>
-    </PropertyGroup>
-    <Message Text="Updating %(CliProjectJson.Identity)" Importance="High" />
-    <AddDependenciesToProjectJson PackagesDrops="$(CoreSetupPkgs);$(CoreClrPkgs)"
-                                  PackageNameRegex="$(PackageNameRegex)"
-                                  ProjectJson="%(CliProjectJson.Identity)"
-                                  OutputProjectJson="%(CliProjectJson.Identity)"
-                                  ExplicitRuntimes="%(CliProjectJson.RuntimeIds)"
-                                  AppendRuntimesSection="$(AppendRuntimesSection)"
-                                  UseNewestAvailablePackages="$(UseNewestAvailablePackages)"
-                                   />
-
-  </Target>
-  <Target Name="GatherCoreSetupProjectJsons">
-    <ItemGroup>
-      <CoreSetupProjectJson Include="$(CoreSetupRepo)build_projects\dotnet-host-build\project.json">
-        <RuntimeIds>win7-x64</RuntimeIds>
-      </CoreSetupProjectJson>
-      <CoreSetupProjectJson Include="$(CoreSetupRepo)pkg\projects\Microsoft.NETCore.App\project.json" />
-      <CoreSetupProjectJson Include="$(CoreSetupRepo)TestAssets\TestProjects\StandAloneApp\project.json">
-        <RuntimeIds>win10-x64</RuntimeIds>
-      </CoreSetupProjectJson>
-      <CoreSetupProjectJson Include="$(CoreSetupRepo)TestAssets\TestProjects\StandAloneTestApp\project.json">
-        <RuntimeIds>win10-x64</RuntimeIds>
-      </CoreSetupProjectJson>
-    </ItemGroup>
-  </Target>
-
-  <Target Name="UpdateCoreSetupProjectJsons"
-          DependsOnTargets="GatherCoreSetupProjectJsons"
-          Inputs="%(CoreSetupProjectJson.Identity)"
-          Outputs="fake">
-    <PropertyGroup>
-      <AppendRuntimesSection>false</AppendRuntimesSection>
-      <AppendRuntimesSection Condition="'%(CoreSetupProjectJson.RuntimeIds)' != ''">true</AppendRuntimesSection>
-    </PropertyGroup>
-    <Message Text="Updating %(CoreSetupProjectJson.Identity)" Importance="High" />
-    <AddDependenciesToProjectJson PackagesDrops="$(CoreSetupPkgs);$(CoreClrPkgs)"
-                                  PackageNameRegex="$(PackageNameRegex)"
-                                  ProjectJson="%(CoreSetupProjectJson.Identity)"
-                                  OutputProjectJson="%(CoreSetupProjectJson.Identity)"
-                                  ExplicitRuntimes="%(CoreSetupProjectJson.RuntimeIds)"
-                                  AppendRuntimesSection="$(AppendRuntimesSection)"
-                                  UseNewestAvailablePackages="$(UseNewestAvailablePackages)"
-                                   />
-  </Target>
-
-  <Target Name="BuildUpdateDependencyVersionsProject">
-    <ItemGroup>
-      <UpdateDependencyVersionsProject Include="src\UpdateDependencyVersions\UpdateDependencyVersions.csproj" />
-    </ItemGroup>
-    <MSBuild Projects="@(UpdateDependencyVersionsProject)">
-      <Output TaskParameter="TargetOutputs"
-              ItemName="UpdateDependencyVersionsTargetOutputs" />
-    </MSBuild>
-    <PropertyGroup>
-      <UpdateDependencyVersionsFilename Condition="'$(UpdateDependencyVersionsFilename)' == ''">%(UpdateDependencyVersionsTargetOutputs.Identity)</UpdateDependencyVersionsFilename>
-    </PropertyGroup>
   </Target>
 
   <Target Name="BuildUpdateNuGetConfigProject">

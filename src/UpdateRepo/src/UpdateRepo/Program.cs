@@ -3,87 +3,132 @@
 
 using NuGet.Versioning;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace UpdateRepo
 {
     public class Program
     {
+        private static Regex packageNameRegex = new Regex(@"(?<name>.*)\.(?<version>\d+\.\d+\.\d+)(-(?<prerelease>.*)?)?");
+        private static string repoRoot;
+        private static string coreClrVersion;
+        private static string jitVersion;
+        private static string sharedFrameworkVersion;
+        private static Dictionary<string, NuGetVersion> versions;
         public static void Main(string[] args)
         {
-            UpdateCoreSetup();
+            repoRoot = args[0];
+            string[] packageDrops = new string[args.Length - 1];
+            Array.Copy(args, 1, packageDrops, 0, args.Length - 1);
+
+            var packageItems = GatherPackageInformationFromDrops(packageDrops);
+            versions = new Dictionary<string, NuGetVersion>();
+            if (packageItems.ContainsKey("Microsoft.NETCore.Runtime.CoreCLR"))
+            {
+                versions.Add("CoreCLRVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Runtime.CoreCLR"]));
+            }
+            if (packageItems.ContainsKey("Microsoft.NETCore.Jit"))
+            {
+                versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
+            }
+            if (packageItems.ContainsKey("Microsoft.NETCore.App"))
+            {
+                versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
+            }
+
+            UpdateDependencies();
         }
 
-        static void UpdateCoreSetup()
+        private static Dictionary<string, string> GatherPackageInformationFromDrops(string[] packagesDrops)
         {
-            var feeds = new Dictionary<string, string> { { "coreclr", @"D:\git\coreclr\bin\Product\Windows_NT.x64.Release\.nuget\pkg" } };
+            Dictionary<string, string> packageItems = new Dictionary<string, string>();
 
-            var nc = new UpdateNuGetConfig(@"D:\git\core-setup\NuGet.Config");
-            nc.Execute(feeds);
-
-            var u = new UpdateDependencyVersions(@"D:\git\core-setup", @"build_projects\shared-build-targets-utils\DependencyVersions.cs");
-
-            var versions = new List<Tuple<string, NuGetVersion>>
+            foreach (string packageDrop in packagesDrops)
             {
-                Tuple.Create("CoreCLRVersion", new NuGetVersion("1.0.4-beta-24318-0")),
-                Tuple.Create("JitVersion", new NuGetVersion("1.0.4-beta-24318-0"))
-            };
+                if (!Directory.Exists(packageDrop))
+                {
+                    Console.WriteLine("PackageDrop does not exist - '{0}'", packageDrop);
+                    continue;
+                }
+                IEnumerable<string> packages = Directory.GetFiles(packageDrop, "*");
 
-            u.Execute(versions);
+                foreach (var package in packages)
+                {
+                    Match match = packageNameRegex.Match(package);
+                    if (match.Success)
+                    {
+                        string name = Path.GetFileName(match.Groups["name"].Value);
+                        string version = match.Groups["version"].Value;
+                        if (match.Groups["prerelease"] != null)
+                        {
+                            string prerelease = match.Groups["prerelease"].Value; ;
+                            if (prerelease.EndsWith(".nupkg") ||
+                                prerelease.EndsWith(".zip") ||
+                                prerelease.EndsWith(".msi"))
+                            {
+                                prerelease = Path.GetFileNameWithoutExtension(prerelease);
+                            }
+                            version += "-" + prerelease;
+                            if (!packageItems.ContainsKey(name))
+                            {
+                                packageItems.Add(name, version);
+                            }
+                        }
+                    }
+                }
+            }
+            return packageItems;
+        }
+
+        static void UpdateDependencies()
+        {
+            if (File.Exists(Path.Combine(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs")))
+            {
+                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs");
+
+                u.Execute(versions);
+            }
+            if (File.Exists(Path.Combine(repoRoot, @"build_projects\dotnet-cli-build\CliDependencyVersions.cs")))
+            {
+                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, @"build_projects\dotnet-cli-build\CliDependencyVersions.cs");
+
+                u.Execute(versions);
+            }
 
             // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(Directory.GetFiles(@"D:\git\core-setup\TestAssets",
-                "project.json", SearchOption.AllDirectories), null, new List<string> { "win10-x64" });
+            UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"TestAssets"),
+                "project.json", SearchOption.AllDirectories), versions, new List<string> { "win10-x64" });
 
             // project.json under here doesn't have a Windows 10 RID
-            UpdateProjectJson.Execute(Directory.GetFiles(@"D:\git\core-setup\build_projects",
-                "project.json", SearchOption.AllDirectories), null, new List<string> { "win7-x64" });
+            UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
+                "project.json", SearchOption.AllDirectories), versions, new List<string> { "win7-x64" });
 
-            IEnumerable<string> projectJsonFiles = 
-                Directory.GetFiles(@"D:\git\core-setup\pkg", "project.json", SearchOption.AllDirectories)
-                .Where(p => !File.Exists(Path.Combine(Path.GetDirectoryName(p), ".noautoupdate")) &&
-                    !Path.GetDirectoryName(p).EndsWith("CSharp_Web", StringComparison.Ordinal));
-
-            var packages = new List<PackageInfo>
+            IEnumerable<string> projectJsonFiles =
+                Directory.GetFiles(Path.Combine(repoRoot, "TestAssets"), "project.json", SearchOption.AllDirectories);
+            if (Directory.Exists(Path.Combine(repoRoot, "pkg")))
+            { 
+                projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, @"pkg"), "project.json", SearchOption.AllDirectories));
+            }
+            if (Directory.Exists(Path.Combine(repoRoot, "test")))
             {
-                new PackageInfo { Id = "Microsoft.NETCore.Runtime.CoreCLR", Version = new NuGetVersion("1.0.4-beta-24318-0") }
-            };
+                projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, "test"), "project.json", SearchOption.AllDirectories));
+            }
+            projectJsonFiles = projectJsonFiles.Union(new string[] {
+                Path.Combine(repoRoot, @"tools\Archiver\project.json"),
+                Path.Combine(repoRoot, @"tools\MultiProjectValidator\project.json"),
+                Path.Combine(repoRoot, @"src\dotnet\project.json"),
+                Path.Combine(repoRoot, @"src\compilers\project.json"),
+                Path.Combine(repoRoot, @"src\dotnet-archive\project.json"),
+                Path.Combine(repoRoot, @"src\dotnet-compile-fsc\project.json")
+            });
+            
+            
 
-            UpdateProjectJson.Execute(projectJsonFiles, packages, new List<string> { "win7-x64" });
-        }
-
-        static void UpdateCli()
-        {
-            var feeds = new Dictionary<string, string> { { "coreclr", @"D:\git\coreclr\bin\Product\Windows_NT.x64.Release\.nuget\pkg" } };
-
-            var nc = new UpdateNuGetConfig(@"D:\git\core-setup\NuGet.Config");
-            nc.Execute(feeds);
-
-            var u = new UpdateDependencyVersions(@"D:\git\core-setup", @"build_projects\shared-build-targets-utils\DependencyVersions.cs");
-
-            var versions = new List<Tuple<string, NuGetVersion>>
-            {
-                Tuple.Create("CoreCLRVersion", new NuGetVersion("1.0.4-beta-24318-0")),
-                Tuple.Create("JitVersion", new NuGetVersion("1.0.4-beta-24318-0"))
-            };
-
-            u.Execute(versions);
-
-            IEnumerable<string> projectJsonFiles = Enumerable.Union(
-                Directory.GetFiles(@"D:\git\core-setup", "project.json", SearchOption.AllDirectories),
-                Directory.GetFiles(Path.Combine(@"D:\git\core-setup", @"src\dotnet\commands\dotnet-new"), "project.json.template", SearchOption.AllDirectories))
-                .Where(p => !File.Exists(Path.Combine(Path.GetDirectoryName(p), ".noautoupdate")) &&
-                    !Path.GetDirectoryName(p).EndsWith("CSharp_Web", StringComparison.Ordinal));
-
-            var packages = new List<PackageInfo>
-            {
-                new PackageInfo { Id = "Microsoft.NETCore.Runtime.CoreCLR", Version = new NuGetVersion("1.0.4-beta-24318-0") }
-            };
-
-            var rids = new List<string> { "win7-x64" };
-            UpdateProjectJson.Execute(projectJsonFiles, packages, rids);
+            UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { "win7-x64" });
         }
     }
 }

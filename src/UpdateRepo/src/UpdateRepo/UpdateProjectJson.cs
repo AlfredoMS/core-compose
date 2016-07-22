@@ -3,6 +3,7 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,20 +13,34 @@ namespace UpdateRepo
 {
     public static class UpdateProjectJson
     {
-        public static void Execute(IEnumerable<string> projectJsonFiles, List<PackageInfo> packageInfos, List<string> rids)
+        public static void Execute(IEnumerable<string> projectJsonFiles, Dictionary<string, NuGetVersion> versions, List<string> rids)
         {
+            var packages = new List<PackageInfo>
+            {
+                new PackageInfo { Id = "Microsoft.NETCore.Runtime.CoreCLR", Version = versions["CoreCLRVersion"] },
+                new PackageInfo { Id = "Microsoft.NETCore.Jit", Version= versions["JitVersion"]}
+            };
+            if (versions.ContainsKey("SharedFrameworkVersion"))
+            {
+                packages.Add(new PackageInfo { Id = "Microsoft.NETCore.App", Version = versions["SharedFrameworkVersion"] });
+            }
             foreach (string projectJsonFile in projectJsonFiles)
             {
+                if(!File.Exists(projectJsonFile) || projectJsonFile.Contains("IncorrectProjectJson"))
+                {
+                    continue;
+                }
+                Console.WriteLine("Updating {0}", projectJsonFile);
                 var projectRoot = ReadProject(projectJsonFile);
 
                 if (projectRoot == null)
                     throw new Exception($"A non valid JSON file was encountered '{projectJsonFile}'. Skipping file.");
 
                 bool isDirty = false;
-                if (packageInfos != null)
+                if (packages != null)
                 {
                     isDirty = FindAllDependencyProperties(projectRoot)
-                        .Select(dependencyProperty => ReplaceDependencyVersion(dependencyProperty, packageInfos))
+                        .Select(dependencyProperty => ReplaceDependencyVersion(dependencyProperty, packages))
                         .ToArray()
                         .Any(shouldWrite => shouldWrite);
                 }

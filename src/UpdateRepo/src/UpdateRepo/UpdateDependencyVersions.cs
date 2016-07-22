@@ -21,12 +21,12 @@ namespace UpdateRepo
             m_depsCsFile = depsCsFile;
         }
 
-        public void Execute(IReadOnlyList<Tuple<string, NuGetVersion>> versions)
+        public void Execute(Dictionary<string, NuGetVersion> versions)
         {
             ReplaceFileContents(Path.Combine(m_repoRoot, m_depsCsFile), fileContents =>
             {
                 foreach (var version in versions)
-                    fileContents = ReplaceDependencyVersion(fileContents, version.Item1, version.Item2.ToNormalizedString());
+                    fileContents = ReplaceDependencyVersion(fileContents, version.Key, version.Value.ToNormalizedString());
 
                 return fileContents;
             });
