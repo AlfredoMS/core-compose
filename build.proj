@@ -41,14 +41,18 @@
                             UpdateCliDependencyVersions;
                             UpdateNuGetConfig;
                             LayoutCoreSetupInstallers" />
+    <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
+    <Exec Command="$(CliRepo)build.cmd" 
+          WorkingDirectory="$(CliRepo)" />
+          
+  </Target>
   <Target Name="BuildCoreSetup"
           DependsOnTargets="BuildRepoTools;
                             UpdateCoreSetupDependencyVersions;
                             UpdateNuGetConfig">
     <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-<!--    <Exec Command="$(CoreSetupRepo)build.cmd" 
+    <Exec Command="$(CoreSetupRepo)build.cmd" 
           WorkingDirectory="$(CoreSetupRepo)" />
--->          
   </Target>
 
   <Target Name="LayoutCoreSetupInstallers"
