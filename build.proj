@@ -40,7 +40,7 @@
           DependsOnTargets="BuildRepoTools;
                             UpdateCliDependencyVersions;
                             UpdateNuGetConfig;
-                            LayoutCoreSetupInstallers" />
+                            LayoutCoreSetupInstallers" >
     <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
     <Exec Command="$(CliRepo)build.cmd" 
           WorkingDirectory="$(CliRepo)" />
