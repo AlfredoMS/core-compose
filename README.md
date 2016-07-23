@@ -8,7 +8,7 @@ To use this repro,
 
 - Clone core-compose local
 - Clone coreclr repo local
-- Clone core-setup repo local
+- Clone core-setup (release/1.0.0 branch) repo local
 - Clone cli
 - Modify config.props to point to your local repos
 - Build coreclr repo (Release)
