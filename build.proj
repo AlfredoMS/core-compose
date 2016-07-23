@@ -112,7 +112,7 @@
   <Target Name="UpdateCoreSetupDependencyVersions">
     <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe restore $(MSBuildThisFileDirectory)packages" 
           WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
-    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CoreSetupRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" 
+    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CoreSetupRepo) $(CoreClrPkgs) " 
           WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
   </Target>
   <Target Name="UpdateCliDependencyVersions">
