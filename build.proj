@@ -46,12 +46,20 @@
           
   </Target>
   <Target Name="BuildCoreSetup"
-          DependsOnTargets="BuildRepoTools;
+          DependsOnTargets="InstallSharedFramework100;
+                            BuildRepoTools;
                             UpdateCoreSetupDependencyVersions;
                             UpdateNuGetConfig">
     <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
     <Exec Command="$(CoreSetupRepo)build.cmd" 
           WorkingDirectory="$(CoreSetupRepo)" />
+  </Target>
+
+  <Target Name="InstallSharedFramework100"
+          Condition="!Exists('$(MSBuildThisFileDirectory)Tools\dotnetcli\shared\Microsoft.NETCore.App\1.0.0\dotnet.exe')">
+    <Message Importance="High" Text="Installing shared framework 1.0.0" />
+    <Exec Command="powershell.exe $(CliRepo)\scripts\obtain\dotnet-install.ps1 -Version 1.0.0 -Architecture x64 -Channel preview -SharedRuntime -InstallDir $(MSBuildThisFileDirectory)\Tools\dotnetcli" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)" />
   </Target>
 
   <Target Name="LayoutCoreSetupInstallers"
