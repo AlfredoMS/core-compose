@@ -99,9 +99,6 @@ namespace UpdateRepo
                 u.Execute(versions);
             }
 
-            // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"TestAssets"),
-                "project.json", SearchOption.AllDirectories), versions, new List<string> { "win10-x64" });
 
             // project.json under here doesn't have a Windows 10 RID
             UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
@@ -126,6 +123,12 @@ namespace UpdateRepo
             
 
             UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { "win7-x64" });
+
+            // NOTE: assumes running on Windows 10
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneApp\project.json") }, versions, new List<string> { "win10-x64" });
+            // NOTE: assumes running on Windows 10
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneTestApp\project.json") }, versions, new List<string> { "win10-x64" });
+
         }
     }
 }
