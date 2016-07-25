@@ -4,6 +4,11 @@ This repo is used to validate a private coreclr build in CLI.
 
 This repo is currently only validated on Windows 10. Validation on Linux is pending...
 
+PreRequisites
+The 1.0.0 shared runtime is required to build this repo (this repo builds core-setup which has a requirement on this version of the runtime).  This version of the runtime does not come with build tools.  To obtain this version of the runtime
+  1. init-tools.cmd (install buildtools)
+  2. powershell.exe [cli repo path]\scripts\obtain\dotnet-install.ps1 -Version 1.0.0 -Architecture x64 -Channel preview -SharedRuntime -InstallDir [core-compose repo path]\Tools\dotnetcli
+
 To use this repro,
 
 - Clone core-compose local
