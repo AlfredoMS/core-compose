@@ -109,10 +109,6 @@ namespace UpdateRepo
 
             IEnumerable<string> projectJsonFiles =
                 Directory.GetFiles(Path.Combine(repoRoot, "TestAssets"), "project.json", SearchOption.AllDirectories);
-            if (Directory.Exists(Path.Combine(repoRoot, "pkg")))
-            { 
-                projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, @"pkg"), "project.json", SearchOption.AllDirectories));
-            }
             if (Directory.Exists(Path.Combine(repoRoot, "test")))
             {
                 projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, "test"), "project.json", SearchOption.AllDirectories));
@@ -123,7 +119,8 @@ namespace UpdateRepo
                 Path.Combine(repoRoot, @"src\dotnet\project.json"),
                 Path.Combine(repoRoot, @"src\compilers\project.json"),
                 Path.Combine(repoRoot, @"src\dotnet-archive\project.json"),
-                Path.Combine(repoRoot, @"src\dotnet-compile-fsc\project.json")
+                Path.Combine(repoRoot, @"src\dotnet-compile-fsc\project.json"),
+                Path.Combine(repoRoot, @"pkg\projects\Microsoft.NETCore.App\project.json")
             });
             
             
