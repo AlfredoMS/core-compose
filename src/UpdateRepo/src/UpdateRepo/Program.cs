@@ -98,7 +98,10 @@ namespace UpdateRepo
 
                 u.Execute(versions);
             }
-
+            if (File.Exists(Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json")))
+            {
+                UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json") }, "win7-x64");
+            }
 
             // project.json under here doesn't have a Windows 10 RID
             UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
@@ -112,6 +115,7 @@ namespace UpdateRepo
             }
             projectJsonFiles = projectJsonFiles.Union(new string[] {
                 Path.Combine(repoRoot, @"tools\Archiver\project.json"),
+                Path.Combine(repoRoot, @"tools\independent\RuntimeGraphGenerator\project.json"),
                 Path.Combine(repoRoot, @"tools\MultiProjectValidator\project.json"),
                 Path.Combine(repoRoot, @"src\dotnet\project.json"),
                 Path.Combine(repoRoot, @"src\compilers\project.json"),

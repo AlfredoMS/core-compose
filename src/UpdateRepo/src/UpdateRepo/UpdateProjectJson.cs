@@ -56,6 +56,22 @@ namespace UpdateRepo
             }
         }
 
+        public static void AddRuntimeId(IEnumerable<string> projectJsonFiles, string rid)
+        {
+            foreach (var projectJsonFile in projectJsonFiles)
+            {
+                var projectRoot = ReadProject(projectJsonFile);
+                if (projectRoot["runtimes"] != null)
+                    continue;
+
+                var runtimes = new JObject();
+                runtimes.Add(rid, new JObject());
+
+                projectRoot["runtimes"] = runtimes;
+                WriteProject(projectRoot, projectJsonFile);
+            }
+        }
+
         static bool FilterRIDs(JObject projectJsonRoot, List<string> rids)
         {
             if (projectJsonRoot["runtimes"] == null)
