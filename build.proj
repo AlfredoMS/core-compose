@@ -41,7 +41,8 @@
                             UpdateNuGetConfig;
                             LayoutCoreSetupInstallers" >
     <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-    <Exec Command="$(CliRepo)build.cmd" 
+    <Exec Command="$(CliRepo)build.cmd"
+          IgnoreStandardErrorWarningFormat="true"
           WorkingDirectory="$(CliRepo)" />
           
   </Target>
