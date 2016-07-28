@@ -73,6 +73,8 @@ if [ ! -e $__PROJECT_JSON_FILE ]; then
 
     echo "Initializing BuildTools..."
     echo "Running: $__BUILD_TOOLS_PATH/init-tools.sh $__scriptpath $__DOTNET_CMD $__TOOLRUNTIME_DIR" >> $__init_tools_log
+    echo "__scriptpath " . $__scriptpath
+    echo "__DOTNET_CMD " . $__DOTNET_CMD
     $__BUILD_TOOLS_PATH/init-tools.sh $__scriptpath $__DOTNET_CMD $__TOOLRUNTIME_DIR >> $__init_tools_log
     if [ "$?" != "0" ]; then
         echo "ERROR: An error occured when trying to initialize the tools. Please check '$__init_tools_log' for more details."
