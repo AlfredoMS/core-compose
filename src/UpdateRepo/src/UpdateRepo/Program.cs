@@ -40,7 +40,6 @@ namespace UpdateRepo
             }
             rid = RuntimeEnvironment.GetRuntimeIdentifier();
             Console.WriteLine("Runtime Identifier: {0}", rid);
-            System.Diagnostics.Debugger.Launch();
             UpdateDependencies();
         }
 
