@@ -16,6 +16,7 @@ namespace UpdateRepo
         private static Regex packageNameRegex = new Regex(@"(?<name>.*)\.(?<version>\d+\.\d+\.\d+)(-(?<prerelease>.*)?)?");
         private static string repoRoot;
         private static Dictionary<string, NuGetVersion> versions;
+        private static string rid;
 
         public static void Main(string[] args)
         {
@@ -37,7 +38,9 @@ namespace UpdateRepo
             {
                 versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
             }
-
+            rid = RuntimeEnvironment.GetRuntimeIdentifier();
+            Console.WriteLine("Runtime Identifier: {0}", rid);
+            System.Diagnostics.Debugger.Launch();
             UpdateDependencies();
         }
 
@@ -84,6 +87,11 @@ namespace UpdateRepo
 
         static void UpdateDependencies()
         {
+            string updateRid = rid;
+            if (rid.Contains("win"))
+            {
+                updateRid = "win7-x64";
+            }
             if (File.Exists(Path.Combine(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs")))
             {
                 UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs");
@@ -98,7 +106,7 @@ namespace UpdateRepo
             }
             if (File.Exists(Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json")))
             {
-                UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json") }, "win7-x64");
+                UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json") }, updateRid);
             }
 
             // these files are only in the CLI repo
@@ -116,12 +124,12 @@ namespace UpdateRepo
                     Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyNetCoreApp\project.json"),
                     Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\BrokenProjectPathSample\project.json"),
                     Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\UnresolvedProjectSample\project.json")
-                }, "win7-x64");
+                }, updateRid);
             }
 
             // project.json under here doesn't have a Windows 10 RID
             UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
-                "project.json", SearchOption.AllDirectories), versions, new List<string> { "win7-x64" });
+                "project.json", SearchOption.AllDirectories), versions, new List<string> { updateRid });
 
             IEnumerable<string> projectJsonFiles =
                 Directory.GetFiles(Path.Combine(repoRoot, "TestAssets"), "project.json", SearchOption.AllDirectories);
@@ -145,12 +153,12 @@ namespace UpdateRepo
                 Path.Combine(repoRoot, @"pkg\projects\Microsoft.NETCore.App\project.json")
             });
             
-            UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { "win7-x64" });
+            UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { updateRid });
 
             // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneApp\project.json") }, versions, new List<string> { "win10-x64" });
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneApp\project.json") }, versions, new List<string> { rid });
             // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneTestApp\project.json") }, versions, new List<string> { "win10-x64" });
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneTestApp\project.json") }, versions, new List<string> { rid });
 
             if (File.Exists(Path.Combine(repoRoot, @"test\dotnet-publish.Tests\PublishTests.cs")))
             {
