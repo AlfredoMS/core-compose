@@ -51,7 +51,7 @@
                             UpdateNuGetConfig">
     <PropertyGroup>
       <BuildCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(CoreSetupRepo)build.cmd</BuildCommand>
-      <BuildCommand Condition="'$(OsGroup)' != 'Windows_NT'">$(CoreSetupRepo)build.sh</BuildCommand>
+      <BuildCommand Condition="'$(OsGroup)' != 'Windows_NT'">bash $(CoreSetupRepo)build.sh</BuildCommand>
     </PropertyGroup>                            
 
     <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
@@ -137,9 +137,9 @@
   <Target Name="UpdateNuGetConfig">
     <Exec Command="$(DotNetCommand) restore" 
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
-    <Exec Command="$(DotNetCommand) run $(CoreClrPkgs) " 
+    <Exec Command="$(DotNetCommand) run $(CoreSetupRepo)NuGet.Config $(CoreClrPkgs)" 
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
-    <Exec Command="$(DotNetCommand) run $(CoreSetupRepo) $(CoreClrPkgs) " 
+    <Exec Command="$(DotNetCommand) run $(CliRepo)NuGet.Config $(CoreSetupRepo) $(CoreClrPkgs) " 
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
   </Target>
 </Project>
