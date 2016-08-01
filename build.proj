@@ -98,7 +98,10 @@
     </PropertyGroup>
     <ZipFileExtractToDirectory SourceArchive="$(SourceArchive)" 
                                DestinationDirectory="$(CliSharedFrameworkRootPath)"
-                               OverwriteDestination="true" />
+                               OverwriteDestination="true"
+                               Condition="'$(OSGroup)' == 'Windows_NT'" />
+    <Exec Command="tar -xvf $(SourceArchive) -C $(CliSharedFrameworkRootPath)"
+          Condition="'$(OSGroup)' != 'Windows_NT'" />
   </Target>
 
   <Target Name="GetSharedFrameworkVersion">
