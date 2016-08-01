@@ -20,27 +20,31 @@ namespace UpdateRepo
 
         public static void Main(string[] args)
         {
-            repoRoot = args[0];
-            string[] packageDrops = new string[args.Length - 1];
-            Array.Copy(args, 1, packageDrops, 0, args.Length - 1);
-
-            var packageItems = GatherPackageInformationFromDrops(packageDrops);
-            versions = new Dictionary<string, NuGetVersion>();
-            if (packageItems.ContainsKey("Microsoft.NETCore.Runtime.CoreCLR"))
-            {
-                versions.Add("CoreCLRVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Runtime.CoreCLR"]));
-            }
-            if (packageItems.ContainsKey("Microsoft.NETCore.Jit"))
-            {
-                versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
-            }
-            if (packageItems.ContainsKey("Microsoft.NETCore.App"))
-            {
-                versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
-            }
             rid = RuntimeEnvironment.GetRuntimeIdentifier();
+            Console.WriteLine("args[0]: {0}", args[0]);
+            if (args[0].ToLower() != "getruntimeid")
+            {
+                repoRoot = args[0];
+                string[] packageDrops = new string[args.Length - 1];
+                Array.Copy(args, 1, packageDrops, 0, args.Length - 1);
+
+                var packageItems = GatherPackageInformationFromDrops(packageDrops);
+                versions = new Dictionary<string, NuGetVersion>();
+                if (packageItems.ContainsKey("Microsoft.NETCore.Runtime.CoreCLR"))
+                {
+                    versions.Add("CoreCLRVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Runtime.CoreCLR"]));
+                }
+                if (packageItems.ContainsKey("Microsoft.NETCore.Jit"))
+                {
+                    versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
+                }
+                if (packageItems.ContainsKey("Microsoft.NETCore.App"))
+                {
+                    versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
+                }
+                UpdateDependencies();
+            }
             Console.WriteLine("Runtime Identifier: {0}", rid);
-            UpdateDependencies();
         }
 
         private static Dictionary<string, string> GatherPackageInformationFromDrops(string[] packagesDrops)
