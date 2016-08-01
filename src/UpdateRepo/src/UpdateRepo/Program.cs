@@ -21,7 +21,6 @@ namespace UpdateRepo
         public static void Main(string[] args)
         {
             rid = RuntimeEnvironment.GetRuntimeIdentifier();
-            Console.WriteLine("args[0]: {0}", args[0]);
             if (args[0].ToLower() != "getruntimeid")
             {
                 repoRoot = args[0];

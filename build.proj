@@ -10,26 +10,31 @@
     <PackageNameRegex Condition="'$(PackageNameRegex)' == ''">(?%3Cname%3E.*)\.(?%3Cversion%3E\d+\.\d+\.\d+)(-(?%3Cprerelease%3E.*)?)?</PackageNameRegex>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(OSGroup)' == 'Windows_NT'">
-    <RuntimeId>win10-x64</RuntimeId>
-  </PropertyGroup>
-
   <PropertyGroup>
-    <CoreClrPkgs>$(CoreClrRepo)bin/Product/$(OSGroup).x64.Release/.nuget/pkg/</CoreClrPkgs>
-    <CoreSetupPkgs>$(CoreSetupRepo)artifacts/$(RuntimeId)/corehost/</CoreSetupPkgs>
-    <CliIntermediatePath>$(CliRepo)artifacts/$(RuntimeId)/intermediate/</CliIntermediatePath>
-    <CliSignalFilesRootPath>$(CliIntermediatePath)coreSetupDownload/</CliSignalFilesRootPath>
-    <CliSharedFrameworkRootPath>$(CliIntermediatePath)sharedFrameworkPublish</CliSharedFrameworkRootPath>
-    <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts/$(RuntimeId)/packages/</CoreSetupInstallersSourcePath>
-    <CliInstallersDestinationPath>$(CliRepo)artifacts/$(RuntimeId)/packages/</CliInstallersDestinationPath>
-    <CoreSetupDotNetWinZip>$(CoreSetupInstallersSourcePath)</CoreSetupDotNetWinZip>
-
-    <DotNetCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet.exe</DotNetCommand>
-    <DotNetCommand Condition="'$(OSGroup)' != 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet</DotNetCommand>
+      <DotNetCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet.exe</DotNetCommand>
+      <DotNetCommand Condition="'$(OSGroup)' != 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet</DotNetCommand>
   </PropertyGroup>
 
   <Target Name="Build" 
-          DependsOnTargets="BuildCoreSetup;BuildCli" />
+          DependsOnTargets="GetRuntimeId;InitProperties;BuildCoreSetup;BuildCli" />
+
+  <Target Name="InitProperties"
+          DependsOnTargets="GetRuntimeId">
+    <PropertyGroup>
+      <CoreClrPkgs>$(CoreClrRepo)bin/Product/$(OSGroup).x64.Release/.nuget/pkg/</CoreClrPkgs>
+      <CoreSetupPkgs>$(CoreSetupRepo)artifacts/$(RuntimeId)/corehost/</CoreSetupPkgs>
+      <CliIntermediatePath>$(CliRepo)artifacts/$(RuntimeId)/intermediate/</CliIntermediatePath>
+      <CliSignalFilesRootPath>$(CliIntermediatePath)coreSetupDownload/</CliSignalFilesRootPath>
+      <CliSharedFrameworkRootPath>$(CliIntermediatePath)sharedFrameworkPublish</CliSharedFrameworkRootPath>
+      <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts/$(RuntimeId)/packages/</CoreSetupInstallersSourcePath>
+      <CliInstallersDestinationPath>$(CliRepo)artifacts/$(RuntimeId)/packages/</CliInstallersDestinationPath>
+      <CoreSetupDotNetWinZip>$(CoreSetupInstallersSourcePath)</CoreSetupDotNetWinZip>
+  </PropertyGroup>
+  </Target>
+
+  <Target Name="GetRuntimeId"
+          DependsOnTargets="InstallSharedFramework100;
+                            GetRuntimeIdFromUpdateRepo" />
 
   <Target Name="BuildCli"
           DependsOnTargets="UpdateCliDependencyVersions;
@@ -40,9 +45,10 @@
       <BuildCommand Condition="'$(OsGroup)' != 'Windows_NT'">$(CliRepo)build.sh</BuildCommand>
     </PropertyGroup>                            
     <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-    <Exec Command="$(BuildCommand)"
+<!-->    <Exec Command="$(BuildCommand)"
           IgnoreStandardErrorWarningFormat="true"
           WorkingDirectory="$(CliRepo)" />
+-->          
           
   </Target>
   <Target Name="BuildCoreSetup"
@@ -55,8 +61,9 @@
     </PropertyGroup>                            
 
     <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-    <Exec Command="$(BuildCommand)" 
+ <!-->   <Exec Command="$(BuildCommand)" 
           WorkingDirectory="$(CoreSetupRepo)" />
+-->          
   </Target>
 
   <Target Name="InstallSharedFramework100"
@@ -85,7 +92,11 @@
 
   <Target Name="UnzipDotnetWinInstaller">
     <MakeDir Directories="$(CliSharedFrameworkRootPath)" />
-    <ZipFileExtractToDirectory SourceArchive="$(CoreSetupInstallersSourcePath)dotnet-win-x64.$(SharedFrameworkVersion).zip" 
+    <PropertyGroup>
+      <SourceArchive>$(CoreSetupInstallersSourcePath)dotnet-win-x64.$(SharedFrameworkVersion).zip</SourceArchive>
+      <SourceArchive Condition="'$(OSGroup)' != 'Windows_NT'">$(SharedFrameworkFile)</SourceArchive>
+    </PropertyGroup>
+    <ZipFileExtractToDirectory SourceArchive="$(SourceArchive)" 
                                DestinationDirectory="$(CliSharedFrameworkRootPath)"
                                OverwriteDestination="true" />
   </Target>
@@ -93,11 +104,13 @@
   <Target Name="GetSharedFrameworkVersion">
     <ItemGroup>
       <SharedFrameworkFiles Include="$(CoreSetupInstallersSourcePath)dotnet-sharedframework-*.msi" />
+      <SharedFrameworkFiles Condition="'$(OSGroup)' != 'Windows_NT'" Include="$(CoreSetupInstallersSourcePath)dotnet-*" />      
     </ItemGroup>
     <PropertyGroup>
       <SharedFrameworkFile Condition="'$(SharedFrameworkFile)' == ''">%(SharedFrameworkFiles.Identity)</SharedFrameworkFile>
       <SharedFrameworkVersion>$([System.Text.RegularExpressions.Regex]::Match($(SharedFrameworkFile), (\d+\.\d+\.\d+-[^\.]+)))</SharedFrameworkVersion>     
     </PropertyGroup>
+    <Message Text="Shared Framework File: $(SharedFrameworkFile)" Importance="High" />
     <Message Text="Shared Framework Version: $(SharedFrameworkVersion)" Importance="High" />
   </Target>
 
@@ -119,6 +132,20 @@
     <WriteLinesToFile File="%(InstallerSignalFile.Identity)"
                       Lines="Empty signal file"
                       Overwrite="true" />
+  </Target>
+
+  <Target Name="GetRuntimeIdFromUpdateRepo">
+    <Exec Command="$(DotNetCommand) restore" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
+    <Exec Command="$(DotNetCommand) run GetRuntimeId" 
+          ConsoleToMSBuild="true"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo">
+      <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
+    </Exec>
+    <PropertyGroup>
+      <RuntimeId Condition="'$(RuntimeId)' == ''">$([System.Text.RegularExpressions.Regex]::Match($(OutputOfExec), Runtime Identifier: (.*)).get_Groups().get_Item(1).ToString())</RuntimeId>
+    </PropertyGroup>
+    <Message Text="RuntimeId: $(RuntimeId)" Importance="High" />
   </Target>
 
   <Target Name="UpdateCoreSetupDependencyVersions">
