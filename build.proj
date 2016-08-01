@@ -169,7 +169,7 @@
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
     <Exec Command="$(DotNetCommand) run $(CoreSetupRepo)NuGet.Config $(CoreClrPkgs)" 
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
-    <Exec Command="$(DotNetCommand) run $(CliRepo)NuGet.Config $(CoreSetupRepo) $(CoreClrPkgs) " 
+    <Exec Command="$(DotNetCommand) run $(CliRepo)NuGet.Config $(CoreSetupPkgs) $(CoreClrPkgs) " 
           WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
   </Target>
 </Project>
