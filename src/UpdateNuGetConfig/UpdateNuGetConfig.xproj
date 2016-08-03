@@ -7,12 +7,11 @@
 
   <Import Project="$(VSToolsPath)\DotNet\Microsoft.DotNet.Props" Condition="'$(VSToolsPath)' != ''" />
   <PropertyGroup Label="Globals">
-    <ProjectGuid>7fa5d6ef-e73d-4b31-8521-c251e2216d0b</ProjectGuid>
-    <RootNamespace>UpdateRepo</RootNamespace>
+    <ProjectGuid>02e763c3-e710-4787-85a8-37d844b78b8f</ProjectGuid>
+    <RootNamespace>UpdateNuGetConfig</RootNamespace>
     <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">.\obj</BaseIntermediateOutputPath>
     <OutputPath Condition="'$(OutputPath)'=='' ">.\bin\</OutputPath>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup>

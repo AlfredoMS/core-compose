@@ -28,7 +28,8 @@ namespace UpdateNuGetConfig
 
         static void WriteNuGetConfigFile(string nuGetConfigFilename, Dictionary<string,string> feedDictionary)
         {
-            using (StreamWriter writer = new StreamWriter(nuGetConfigFilename))
+            using (FileStream stream = File.OpenWrite(nuGetConfigFilename))
+            using (StreamWriter writer = new StreamWriter(stream))
             {
                 writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
                 writer.WriteLine("<configuration>");
@@ -48,7 +49,8 @@ namespace UpdateNuGetConfig
         {
             Regex feedRegex = new Regex("add key=\"(?<key>[^\"]+)\" value=\"(?<value>[^\"]+)\"");
 
-            using (StreamReader reader = new StreamReader(nuGetConfigFilename))
+            using (FileStream stream = File.OpenRead(nuGetConfigFilename))
+            using (StreamReader reader = new StreamReader(stream))
             {
                 while(!reader.EndOfStream)
                 {

@@ -16,29 +16,34 @@ namespace UpdateRepo
         private static Regex packageNameRegex = new Regex(@"(?<name>.*)\.(?<version>\d+\.\d+\.\d+)(-(?<prerelease>.*)?)?");
         private static string repoRoot;
         private static Dictionary<string, NuGetVersion> versions;
+        private static string rid;
 
         public static void Main(string[] args)
         {
-            repoRoot = args[0];
-            string[] packageDrops = new string[args.Length - 1];
-            Array.Copy(args, 1, packageDrops, 0, args.Length - 1);
+            rid = RuntimeEnvironment.GetRuntimeIdentifier();
+            if (args[0].ToLower() != "getruntimeid")
+            {
+                repoRoot = args[0];
+                string[] packageDrops = new string[args.Length - 1];
+                Array.Copy(args, 1, packageDrops, 0, args.Length - 1);
 
-            var packageItems = GatherPackageInformationFromDrops(packageDrops);
-            versions = new Dictionary<string, NuGetVersion>();
-            if (packageItems.ContainsKey("Microsoft.NETCore.Runtime.CoreCLR"))
-            {
-                versions.Add("CoreCLRVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Runtime.CoreCLR"]));
+                var packageItems = GatherPackageInformationFromDrops(packageDrops);
+                versions = new Dictionary<string, NuGetVersion>();
+                if (packageItems.ContainsKey("Microsoft.NETCore.Runtime.CoreCLR"))
+                {
+                    versions.Add("CoreCLRVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Runtime.CoreCLR"]));
+                }
+                if (packageItems.ContainsKey("Microsoft.NETCore.Jit"))
+                {
+                    versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
+                }
+                if (packageItems.ContainsKey("Microsoft.NETCore.App"))
+                {
+                    versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
+                }
+                UpdateDependencies();
             }
-            if (packageItems.ContainsKey("Microsoft.NETCore.Jit"))
-            {
-                versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
-            }
-            if (packageItems.ContainsKey("Microsoft.NETCore.App"))
-            {
-                versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
-            }
-
-            UpdateDependencies();
+            Console.WriteLine("Runtime Identifier: {0}", rid);
         }
 
         private static Dictionary<string, string> GatherPackageInformationFromDrops(string[] packagesDrops)
@@ -84,44 +89,53 @@ namespace UpdateRepo
 
         static void UpdateDependencies()
         {
-            if (File.Exists(Path.Combine(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs")))
+            string updateRid = rid;
+            if (rid.Contains("win"))
             {
-                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, @"build_projects\shared-build-targets-utils\DependencyVersions.cs");
+                updateRid = "win7-x64";
+            }
 
+            string relativePath = NormalizeDirPath(@"build_projects\shared-build-targets-utils\DependencyVersions.cs");
+            if (File.Exists(Path.Combine(repoRoot, relativePath)))
+            {
+                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, relativePath);
                 u.Execute(versions);
             }
-            if (File.Exists(Path.Combine(repoRoot, @"build_projects\dotnet-cli-build\CliDependencyVersions.cs")))
-            {
-                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, @"build_projects\dotnet-cli-build\CliDependencyVersions.cs");
 
+            relativePath = NormalizeDirPath(@"build_projects\dotnet-cli-build\CliDependencyVersions.cs");
+            if (File.Exists(Path.Combine(repoRoot, relativePath)))
+            {
+                UpdateDependencyVersions u = new UpdateDependencyVersions(repoRoot, relativePath);
                 u.Execute(versions);
             }
-            if (File.Exists(Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json")))
+
+            relativePath = NormalizeDirPath(@"build_projects\update-dependencies\project.json");
+            if (File.Exists(Path.Combine(repoRoot, relativePath)))
             {
-                UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, @"build_projects\update-dependencies\project.json") }, "win7-x64");
+                UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, relativePath) }, updateRid);
             }
 
             // these files are only in the CLI repo
-            if (File.Exists(Path.Combine(repoRoot, @"tools\Archiver\project.json")))
+            if (File.Exists(Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json"))))
             {
                 UpdateProjectJson.AddRuntimeId(new string[]
                 {
-                    Path.Combine(repoRoot, @"tools\Archiver\project.json"),
-                    Path.Combine(repoRoot, @"tools\MultiProjectValidator\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\DesktopTestProjects\AppWithDirectDependencyDesktopAndPortable\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\DesktopTestProjects\LibraryWithDirectDependencyDesktopAndPortable\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\IncompatiblePackageSample\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\FailReleaseProject\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyConsoleApp\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyNetCoreApp\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\BrokenProjectPathSample\project.json"),
-                    Path.Combine(repoRoot, @"TestAssets\ProjectModelServer\DthTestProjects\src\UnresolvedProjectSample\project.json")
-                }, "win7-x64");
+                    Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"tools\MultiProjectValidator\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\DesktopTestProjects\AppWithDirectDependencyDesktopAndPortable\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\DesktopTestProjects\LibraryWithDirectDependencyDesktopAndPortable\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\IncompatiblePackageSample\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\FailReleaseProject\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyConsoleApp\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyNetCoreApp\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\BrokenProjectPathSample\project.json")),
+                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\UnresolvedProjectSample\project.json"))
+                }, updateRid);
             }
 
             // project.json under here doesn't have a Windows 10 RID
             UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
-                "project.json", SearchOption.AllDirectories), versions, new List<string> { "win7-x64" });
+                "project.json", SearchOption.AllDirectories), versions, new List<string> { updateRid });
 
             IEnumerable<string> projectJsonFiles =
                 Directory.GetFiles(Path.Combine(repoRoot, "TestAssets"), "project.json", SearchOption.AllDirectories);
@@ -129,36 +143,44 @@ namespace UpdateRepo
             {
                 projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, "test"), "project.json", SearchOption.AllDirectories));
             }
-            if (Directory.Exists(Path.Combine(repoRoot, @"src\dotnet\commands\dotnet-new")))
+
+            relativePath = NormalizeDirPath(@"src\dotnet\commands\dotnet-new");
+            if (Directory.Exists(Path.Combine(repoRoot, relativePath)))
             {
-                projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, @"src\dotnet\commands\dotnet-new"), "project.json.template", SearchOption.AllDirectories));
+                projectJsonFiles = projectJsonFiles.Union(Directory.GetFiles(Path.Combine(repoRoot, relativePath), "project.json.template", SearchOption.AllDirectories));
             }
 
             projectJsonFiles = projectJsonFiles.Union(new string[] {
-                Path.Combine(repoRoot, @"tools\Archiver\project.json"),
-                Path.Combine(repoRoot, @"tools\independent\RuntimeGraphGenerator\project.json"),
-                Path.Combine(repoRoot, @"tools\MultiProjectValidator\project.json"),
-                Path.Combine(repoRoot, @"src\dotnet\project.json"),
-                Path.Combine(repoRoot, @"src\compilers\project.json"),
-                Path.Combine(repoRoot, @"src\dotnet-archive\project.json"),
-                Path.Combine(repoRoot, @"src\dotnet-compile-fsc\project.json"),
-                Path.Combine(repoRoot, @"pkg\projects\Microsoft.NETCore.App\project.json")
+                Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"tools\independent\RuntimeGraphGenerator\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"tools\MultiProjectValidator\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"src\compilers\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet-archive\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet-compile-fsc\project.json")),
+                Path.Combine(repoRoot, NormalizeDirPath(@"pkg\projects\Microsoft.NETCore.App\project.json"))
             });
             
-            UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { "win7-x64" });
+            UpdateProjectJson.Execute(projectJsonFiles, versions, new List<string> { updateRid });
 
             // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneApp\project.json") }, versions, new List<string> { "win10-x64" });
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\TestProjects\StandaloneApp\project.json")) }, versions, new List<string> { rid });
             // NOTE: assumes running on Windows 10
-            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, @"TestAssets\TestProjects\StandaloneTestApp\project.json") }, versions, new List<string> { "win10-x64" });
+            UpdateProjectJson.Execute(new string[] { Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\TestProjects\StandaloneTestApp\project.json")) }, versions, new List<string> { rid });
 
-            if (File.Exists(Path.Combine(repoRoot, @"test\dotnet-publish.Tests\PublishTests.cs")))
+            relativePath = NormalizeDirPath(@"test\dotnet-publish.Tests\PublishTests.cs");
+            if (File.Exists(Path.Combine(repoRoot, relativePath)))
             {
                 // this test wants to cross-publish a core app, since it's likely there aren't any runtime packages
                 // for all of the RIDs the test will fail.  as this test isn't super-interesting for testing isolated
                 // changes to coreclr we just remove the Fact attribute so the test is never executed.
-                UpdateTest.DemoteTestCases(Path.Combine(repoRoot, @"test\dotnet-publish.Tests\PublishTests.cs"), new string[] { "CrossPublishingSucceedsAndHasExpectedArtifacts" });
+                UpdateTest.DemoteTestCases(Path.Combine(repoRoot, relativePath), new string[] { "CrossPublishingSucceedsAndHasExpectedArtifacts" });
             }
+        }
+
+        static string NormalizeDirPath(string path)
+        {
+            return path.Replace('\\', Path.DirectorySeparatorChar);
         }
     }
 }

@@ -1,18 +1,14 @@
-{
+﻿{
   "version": "1.0.0-*",
   "buildOptions": {
-    "emitEntryPoint": true,
-    "define": [],
-    "allowUnsafe": true
+    "emitEntryPoint": true
   },
 
   "dependencies": {
     "Microsoft.NETCore.App": {
       "type": "platform",
       "version": "1.0.0"
-    },
-    "Newtonsoft.Json": "9.0.1",
-    "NuGet.Versioning": "3.5.0-beta2-1484"
+    }
   },
 
   "frameworks": {

@@ -5,61 +5,70 @@
   <Import Project="dir.props" />
   <Import Project="config.props" />
 
-  <!--
-   1. Build local repo tools
-   2. Update core-setup project.jsons
-   3. Update core-setup .cs version files
-   4. build core-setup
-   5. Get shared framework version
-   5. Create signal file layout
-   6. Update cli project.jsons
-   7. Update cli .cs version files
-   8. build cli
-  -->
   <PropertyGroup>
     <!-- Note: escape msbuild characters with ascii escape codes.  < == %3C, > == %3E-->
     <PackageNameRegex Condition="'$(PackageNameRegex)' == ''">(?%3Cname%3E.*)\.(?%3Cversion%3E\d+\.\d+\.\d+)(-(?%3Cprerelease%3E.*)?)?</PackageNameRegex>
   </PropertyGroup>
 
   <PropertyGroup>
-    <CoreClrPkgs>$(CoreClrRepo)bin\Product\Windows_NT.x64.Release\.nuget\pkg\</CoreClrPkgs>
-    <CoreSetupPkgs>$(CoreSetupRepo)artifacts\win10-x64\corehost\</CoreSetupPkgs>
-    <CliIntermediatePath>$(CliRepo)artifacts\win10-x64\intermediate\</CliIntermediatePath>
-    <CliSignalFilesRootPath>$(CliIntermediatePath)coreSetupDownload\</CliSignalFilesRootPath>
-    <CliSharedFrameworkRootPath>$(CliIntermediatePath)sharedFrameworkPublish</CliSharedFrameworkRootPath>
-    <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts\win10-x64\packages\</CoreSetupInstallersSourcePath>
-    <CliInstallersDestinationPath>$(CliRepo)artifacts\win10-x64\packages\</CliInstallersDestinationPath>
-    <CoreSetupDotNetWinZip>$(CoreSetupInstallersSourcePath)</CoreSetupDotNetWinZip>
+    <DotNetCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet.exe</DotNetCommand>
+    <DotNetCommand Condition="'$(OSGroup)' != 'Windows_NT'">$(ToolsDir)/dotnetcli/dotnet</DotNetCommand>
   </PropertyGroup>
 
-  <Target Name="Build" 
-          DependsOnTargets="BuildCoreSetup;BuildCli" />
+  <Target Name="Build"
+          DependsOnTargets="GetRuntimeId;InitProperties;BuildCoreSetup;BuildCli" />
+
+  <Target Name="InitProperties"
+          DependsOnTargets="GetRuntimeId">
+    <PropertyGroup>
+      <CoreClrPkgs>$(CoreClrRepo)bin/Product/$(OSGroup).x64.Release/.nuget/pkg/</CoreClrPkgs>
+      <CoreSetupPkgs>$(CoreSetupRepo)artifacts/$(RuntimeId)/corehost/</CoreSetupPkgs>
+      <CliIntermediatePath>$(CliRepo)artifacts/$(RuntimeId)/intermediate/</CliIntermediatePath>
+      <CliSignalFilesRootPath>$(CliIntermediatePath)coreSetupDownload/</CliSignalFilesRootPath>
+      <CliSharedFrameworkRootPath>$(CliIntermediatePath)sharedFrameworkPublish</CliSharedFrameworkRootPath>
+      <CoreSetupInstallersSourcePath>$(CoreSetupRepo)artifacts/$(RuntimeId)/packages/</CoreSetupInstallersSourcePath>
+      <CliInstallersDestinationPath>$(CliRepo)artifacts/$(RuntimeId)/packages/</CliInstallersDestinationPath>
+      <CoreSetupDotNetWinZip>$(CoreSetupInstallersSourcePath)</CoreSetupDotNetWinZip>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="GetRuntimeId"
+          DependsOnTargets="InstallSharedFramework100;
+                            GetRuntimeIdFromUpdateRepo" />
 
   <Target Name="BuildCli"
-          DependsOnTargets="BuildRepoTools;
-                            UpdateCliDependencyVersions;
+          DependsOnTargets="UpdateCliDependencyVersions;
                             UpdateNuGetConfig;
                             LayoutCoreSetupInstallers" >
-    <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-    <Exec Command="$(CliRepo)build.cmd"
-          IgnoreStandardErrorWarningFormat="true"
-          WorkingDirectory="$(CliRepo)" />
-          
+    <PropertyGroup>
+      <BuildCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(CliRepo)build.cmd</BuildCommand>
+      <BuildCommand Condition="'$(OsGroup)' != 'Windows_NT'">$(CliRepo)build.sh</BuildCommand>
+    </PropertyGroup>
+    <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
+    <Exec Command="$(BuildCommand)" IgnoreStandardErrorWarningFormat="true" WorkingDirectory="$(CliRepo)" />
   </Target>
+
   <Target Name="BuildCoreSetup"
           DependsOnTargets="InstallSharedFramework100;
-                            BuildRepoTools;
                             UpdateCoreSetupDependencyVersions;
                             UpdateNuGetConfig">
-    <Exec Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
-    <Exec Command="$(CoreSetupRepo)build.cmd" 
-          WorkingDirectory="$(CoreSetupRepo)" />
+    <PropertyGroup>
+      <BuildCommand Condition="'$(OSGroup)' == 'Windows_NT'">$(CoreSetupRepo)build.cmd</BuildCommand>
+      <BuildCommand Condition="'$(OsGroup)' != 'Windows_NT'">bash $(CoreSetupRepo)build.sh</BuildCommand>
+    </PropertyGroup>
+
+    <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="powershell.exe Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process" />
+    <Exec Command="$(BuildCommand)" WorkingDirectory="$(CoreSetupRepo)" />
   </Target>
 
   <Target Name="InstallSharedFramework100"
-          Condition="!Exists('$(MSBuildThisFileDirectory)Tools\dotnetcli\shared\Microsoft.NETCore.App\1.0.0\dotnet.exe')">
+          Condition="!Exists('$(MSBuildThisFileDirectory)Tools/dotnetcli/shared/Microsoft.NETCore.App/1.0.0/dotnet.exe')">
     <Message Importance="High" Text="Installing shared framework 1.0.0" />
-    <Exec Command="powershell.exe $(CliRepo)\scripts\obtain\dotnet-install.ps1 -Version 1.0.0 -Architecture x64 -Channel preview -SharedRuntime -InstallDir $(MSBuildThisFileDirectory)\Tools\dotnetcli" 
+    <PropertyGroup>
+      <BuildCommand Condition="'$(OSGroup)' == 'Windows_NT'">powershell.exe $(CliRepo)scripts\obtain\dotnet-install.ps1"</BuildCommand>
+      <BuildCommand Condition="'$(OSGroup)' != 'Windows_NT'">bash $(CliRepo)scripts/obtain/dotnet-install.sh</BuildCommand>
+    </PropertyGroup>
+    <Exec Condition="'$(OSGroup)' == 'Windows_NT'" Command="$(BuildCommand) -Version 1.0.0 -Architecture x64 -Channel preview -SharedRuntime -InstallDir $(MSBuildThisFileDirectory)Tools/dotnetcli"
           WorkingDirectory="$(MSBuildThisFileDirectory)" />
   </Target>
 
@@ -67,9 +76,10 @@
           DependsOnTargets="WriteInstallerSignalFiles;
                             UnzipDotnetWinInstaller;
                             CopyCoreSetupInstallers" />
+
   <Target Name="CopyCoreSetupInstallers">
     <ItemGroup>
-      <InstallerFiles Include="$(CoreSetupInstallersSourcePath)\*" />
+      <InstallerFiles Include="$(CoreSetupInstallersSourcePath)/*" />
     </ItemGroup>
     <Copy SourceFiles="@(InstallerFiles)"
           DestinationFolder="$(CliInstallersDestinationPath)"
@@ -78,73 +88,85 @@
 
   <Target Name="UnzipDotnetWinInstaller">
     <MakeDir Directories="$(CliSharedFrameworkRootPath)" />
-    <ZipFileExtractToDirectory SourceArchive="$(CoreSetupInstallersSourcePath)dotnet-win-x64.$(SharedFrameworkVersion).zip" 
+    <PropertyGroup>
+      <SourceArchive>$(CoreSetupInstallersSourcePath)dotnet-win-x64.$(SharedFrameworkVersion).zip</SourceArchive>
+      <SourceArchive Condition="'$(OSGroup)' != 'Windows_NT'">$(SharedFrameworkFile)</SourceArchive>
+    </PropertyGroup>
+    <ZipFileExtractToDirectory SourceArchive="$(SourceArchive)"
                                DestinationDirectory="$(CliSharedFrameworkRootPath)"
-                               OverwriteDestination="true" />
+                               OverwriteDestination="true"
+                               Condition="'$(OSGroup)' == 'Windows_NT'" />
+    <Exec Command="tar -xvf $(SourceArchive) -C $(CliSharedFrameworkRootPath)"
+          Condition="'$(OSGroup)' != 'Windows_NT'" />
   </Target>
 
   <Target Name="GetSharedFrameworkVersion">
     <ItemGroup>
       <SharedFrameworkFiles Include="$(CoreSetupInstallersSourcePath)dotnet-sharedframework-*.msi" />
+      <SharedFrameworkFiles Condition="'$(OSGroup)' != 'Windows_NT'" Include="$(CoreSetupInstallersSourcePath)dotnet-*" />
     </ItemGroup>
     <PropertyGroup>
       <SharedFrameworkFile Condition="'$(SharedFrameworkFile)' == ''">%(SharedFrameworkFiles.Identity)</SharedFrameworkFile>
-      <SharedFrameworkVersion>$([System.Text.RegularExpressions.Regex]::Match($(SharedFrameworkFile), (\d+\.\d+\.\d+-[^\.]+)))</SharedFrameworkVersion>     
+      <SharedFrameworkVersion>$([System.Text.RegularExpressions.Regex]::Match($(SharedFrameworkFile), (\d+\.\d+\.\d+-[^\.]+)))</SharedFrameworkVersion>
     </PropertyGroup>
+    <Message Text="Shared Framework File: $(SharedFrameworkFile)" Importance="High" />
     <Message Text="Shared Framework Version: $(SharedFrameworkVersion)" Importance="High" />
   </Target>
 
   <Target Name="GatherInstallerSignalFiles"
           DependsOnTargets="GetSharedFrameworkVersion">
     <ItemGroup>
-      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\combinedSharedHostAndFrameworkArchive" />
-      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\sharedFrameworkInstaller" />
-      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\sharedHostInstaller" />
-      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\hostFxrInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)/combinedSharedHostAndFrameworkArchive" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)/sharedFrameworkInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)/sharedHostInstaller" />
+      <InstallerSignalFile Include="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)/hostFxrInstaller" />
     </ItemGroup>
   </Target>
   <Target Name="WriteInstallerSignalFiles"
           DependsOnTargets="GatherInstallerSignalFiles"
           Inputs="%(InstallerSignalFile.Identity)"
           Outputs="fake">
-    <MakeDir Directories="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)\" />
+    <MakeDir Directories="$(CliSignalFilesRootPath)$(SharedFrameworkVersion)/" />
     <Message Text="Writing signal file: %(InstallerSignalFile.Identity)" Importance="High" />
     <WriteLinesToFile File="%(InstallerSignalFile.Identity)"
                       Lines="Empty signal file"
                       Overwrite="true" />
   </Target>
 
-  <Target Name="BuildRepoTools"
-          DependsOnTargets="BuildUpdateNuGetConfigProject" />
+  <Target Name="GetRuntimeIdFromUpdateRepo">
+    <Exec Command="$(DotNetCommand) restore"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
+    <Exec Command="$(DotNetCommand) run GetRuntimeId"
+          ConsoleToMSBuild="true"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo">
+      <Output TaskParameter="ConsoleOutput" PropertyName="OutputOfExec" />
+    </Exec>
+    <PropertyGroup>
+      <RuntimeId Condition="'$(RuntimeId)' == ''">$([System.Text.RegularExpressions.Regex]::Match($(OutputOfExec), Runtime Identifier: (.*)).get_Groups().get_Item(1).ToString())</RuntimeId>
+    </PropertyGroup>
+    <Message Text="RuntimeId: $(RuntimeId)" Importance="High" />
+  </Target>
 
   <Target Name="UpdateCoreSetupDependencyVersions">
-    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe restore $(MSBuildThisFileDirectory)packages" 
-          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
-    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CoreSetupRepo) $(CoreClrPkgs) " 
-          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
+    <Exec Command="$(DotNetCommand) restore"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
+    <Exec Command="$(DotNetCommand) run $(CoreSetupRepo) $(CoreClrPkgs)"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
   </Target>
+
   <Target Name="UpdateCliDependencyVersions">
-    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe restore $(MSBuildThisFileDirectory)packages" 
-          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
-    <Exec Command="$(ToolsDir)\dotnetcli\dotnet.exe run $(CliRepo) $(CoreClrPkgs) $(CoreSetupPkgs)" 
-          WorkingDirectory="$(MSBuildThisFileDirectory)src\UpdateRepo\src\UpdateRepo" />
+    <Exec Command="$(DotNetCommand) restore"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
+    <Exec Command="$(DotNetCommand) run $(CliRepo) $(CoreClrPkgs) $(CoreSetupPkgs)"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateRepo/src/UpdateRepo" />
   </Target>
 
   <Target Name="UpdateNuGetConfig">
-    <Exec Command="$(UpdateNuGetConfigFilename) $(CoreSetupRepo)NuGet.config $(CoreClrPkgs)" />
-    <Exec Command="$(UpdateNuGetConfigFilename) $(CliRepo)NuGet.config $(CoreClrPkgs) $(CoreSetupPkgs)" />
-  </Target>
-
-  <Target Name="BuildUpdateNuGetConfigProject">
-    <ItemGroup>
-      <UpdateNuGetConfigProject Include="src\UpdateNuGetConfig\UpdateNuGetConfig.csproj" />
-    </ItemGroup>
-    <MSBuild Projects="@(UpdateNuGetConfigProject)">
-      <Output TaskParameter="TargetOutputs"
-              ItemName="UpdateNuGetConfigTargetOutputs" />
-    </MSBuild>
-    <PropertyGroup>
-      <UpdateNuGetConfigFilename Condition="'$(UpdateNuGetConfigFilename)' == ''">%(UpdateNuGetConfigTargetOutputs.Identity)</UpdateNuGetConfigFilename>
-    </PropertyGroup>
+    <Exec Command="$(DotNetCommand) restore"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
+    <Exec Command="$(DotNetCommand) run $(CoreSetupRepo)NuGet.Config $(CoreClrPkgs)"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
+    <Exec Command="$(DotNetCommand) run $(CliRepo)NuGet.Config $(CoreSetupPkgs) $(CoreClrPkgs)"
+          WorkingDirectory="$(MSBuildThisFileDirectory)src/UpdateNuGetConfig" />
   </Target>
 </Project>
