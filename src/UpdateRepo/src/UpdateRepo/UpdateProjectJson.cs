@@ -60,6 +60,7 @@ namespace UpdateRepo
         {
             foreach (var projectJsonFile in projectJsonFiles)
             {
+                if (!File.Exists(projectJsonFile)) continue;
                 var projectRoot = ReadProject(projectJsonFile);
                 if (projectRoot["runtimes"] != null)
                     continue;
