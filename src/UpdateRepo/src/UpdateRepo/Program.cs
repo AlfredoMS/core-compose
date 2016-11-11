@@ -37,10 +37,7 @@ namespace UpdateRepo
                 {
                     versions.Add("JitVersion", new NuGetVersion(packageItems["Microsoft.NETCore.Jit"]));
                 }
-                if (packageItems.ContainsKey("Microsoft.NETCore.App"))
-                {
-                    versions.Add("SharedFrameworkVersion", new NuGetVersion(packageItems["Microsoft.NETCore.App"]));
-                }
+
                 UpdateDependencies();
             }
             Console.WriteLine("Runtime Identifier: {0}", rid);
@@ -109,33 +106,11 @@ namespace UpdateRepo
                 u.Execute(versions);
             }
 
-            relativePath = NormalizeDirPath(@"build_projects\update-dependencies\project.json");
+            relativePath = NormalizeDirPath(@"pkg/projects/Microsoft.NETCore.App/project.json");
             if (File.Exists(Path.Combine(repoRoot, relativePath)))
             {
                 UpdateProjectJson.AddRuntimeId(new string[]{ Path.Combine(repoRoot, relativePath) }, updateRid);
             }
-
-            // these files are only in the CLI repo
-            if (File.Exists(Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json"))))
-            {
-                UpdateProjectJson.AddRuntimeId(new string[]
-                {
-                    Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"tools\MultiProjectValidator\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\DesktopTestProjects\AppWithDirectDependencyDesktopAndPortable\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\DesktopTestProjects\LibraryWithDirectDependencyDesktopAndPortable\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\IncompatiblePackageSample\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\FailReleaseProject\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyConsoleApp\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\EmptyNetCoreApp\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\BrokenProjectPathSample\project.json")),
-                    Path.Combine(repoRoot, NormalizeDirPath(@"TestAssets\ProjectModelServer\DthTestProjects\src\UnresolvedProjectSample\project.json"))
-                }, updateRid);
-            }
-
-            // project.json under here doesn't have a Windows 10 RID
-            UpdateProjectJson.Execute(Directory.GetFiles(Path.Combine(repoRoot, @"build_projects"),
-                "project.json", SearchOption.AllDirectories), versions, new List<string> { updateRid });
 
             IEnumerable<string> projectJsonFiles =
                 Directory.GetFiles(Path.Combine(repoRoot, "TestAssets"), "project.json", SearchOption.AllDirectories);
@@ -151,13 +126,6 @@ namespace UpdateRepo
             }
 
             projectJsonFiles = projectJsonFiles.Union(new string[] {
-                Path.Combine(repoRoot, NormalizeDirPath(@"tools\Archiver\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"tools\independent\RuntimeGraphGenerator\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"tools\MultiProjectValidator\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"src\compilers\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet-archive\project.json")),
-                Path.Combine(repoRoot, NormalizeDirPath(@"src\dotnet-compile-fsc\project.json")),
                 Path.Combine(repoRoot, NormalizeDirPath(@"pkg\projects\Microsoft.NETCore.App\project.json"))
             });
             

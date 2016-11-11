@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <Target Name="Build"
-          DependsOnTargets="GetRuntimeId;InitProperties;BuildCoreSetup;BuildCli" />
+          DependsOnTargets="GetRuntimeId;InitProperties;BuildCoreSetup" />
 
   <Target Name="InitProperties"
           DependsOnTargets="GetRuntimeId">
